@@ -1,13 +1,9 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const userRouter = require('./routes/users');
-// MONGO_URL - адрес подключения БД
+const cardRouter = require('./routes/cards');
 // 127.0.0.1 - вместо localhost, т.к. node -v = 18
 const { PORT = 3000, MONGO_URL = 'mongodb://127.0.0.1:27017/mestodb' } = process.env;
-// MONGO_URL = 'mongodb://127.0.0.1:27017/mestodb'
-
-// подключаемся к серверу mongoDB
-mongoose.connect(MONGO_URL);
 
 const app = express();
 app.use(express.json()); // вместо body parser
@@ -20,12 +16,17 @@ app.use((req, res, next) => {
   next();
 })
 
-// роут для пользователей
-app.use('/', userRouter);
+// роуты для пользователей и карточек
+app.use('/users', userRouter);
+app.use('/cards', cardRouter);
 
-app.listen(PORT, () => {
-    console.log(`App listening on port ${PORT}`);
-});
+async function init() {
+  await mongoose.connect(MONGO_URL);
+  await app.listen(PORT);
+  console.log(`App listening on port ${PORT}`);
+};
+
+init();
 
 // проверка:
 // app.get('/users', (req, res) => {
