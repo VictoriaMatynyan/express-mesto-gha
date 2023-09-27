@@ -3,9 +3,12 @@ const mongoose = require('mongoose');
 const cardSchema = new mongoose.Schema({
   name: {
     type: String,
-    required: true,
-    minlength: 2,
-    maxlength: 30,
+    required: {
+      value: true,
+      message: 'Это поле обязательно для заполнения',
+    },
+    minlength: [2, 'Введите минимум 2 символа'],
+    maxlength: [30, 'Максимум 30 символов'],
   },
   link: {
     type: String,
@@ -13,22 +16,25 @@ const cardSchema = new mongoose.Schema({
     validate: {
       validator: (v) => /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)$/.test(v),
       message: 'Здесь должен быть URL',
-    }
+    },
   },
   owner: {
     type: mongoose.Schema.Types.ObjectId, // связываем пользователя и карточку
     ref: 'user',
-    required: true
+    required: {
+      value: true,
+      message: 'Это поле обязательно для заполнения',
+    },
   },
   likes: [{ // описываем схему для одного элемента и заключаем её в квадратные скобки
     type: mongoose.Schema.Types.ObjectId,
     ref: 'user',
-    default: [] // по умолчанию - пустой массив
+    default: [], // по умолчанию - пустой массив
   }], // [] - потому что это список(= массив) лайкнувших пост пользователей
   createdAt: {
     type: Date,
-    default: Date.now
-  }
+    default: Date.now,
+  },
 });
 
 module.exports = mongoose.model('card', cardSchema);

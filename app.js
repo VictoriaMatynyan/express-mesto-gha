@@ -11,10 +11,10 @@ app.use(express.json()); // вместо body parser
 // временное решение для хранения _id автора и обогащения мидлвэра getUserById
 app.use((req, res, next) => {
   req.user = {
-    _id: '6511dcd38a271760b206f378'
+    _id: '6511dcd38a271760b206f378',
   };
   next();
-})
+});
 
 // роуты для пользователей и карточек
 app.use('/users', userRouter);
@@ -23,12 +23,8 @@ app.use('/cards', cardRouter);
 async function init() {
   await mongoose.connect(MONGO_URL);
   await app.listen(PORT);
+  // eslint-disable-next-line no-console
   console.log(`App listening on port ${PORT}`);
-};
+}
 
 init();
-
-// проверка:
-// app.get('/users', (req, res) => {
-//   res.status(200).send({message: 'Hello World!'});
-// });
