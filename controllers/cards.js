@@ -32,7 +32,7 @@ module.exports.deleteCard = (req, res) => {
     })
     .catch((error) => {
       if (error.message === 'NotFound') {
-        return res.status(Errors.NOT_FOUND).send({ message: 'Карточка с указанным _id не найдена' });
+        return res.status(Errors.BAD_REQUEST).send({ message: 'Карточка с указанным _id не найдена' });
       }
       return res.status(Errors.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера', error });
     });

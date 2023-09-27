@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const userRouter = require('./routes/users');
 const cardRouter = require('./routes/cards');
+const Errors = require('./utils/errors');
 // 127.0.0.1 - вместо localhost, т.к. node -v = 18
 const { PORT = 3000, MONGO_URL = 'mongodb://127.0.0.1:27017/mestodb' } = process.env;
 
@@ -19,6 +20,7 @@ app.use((req, res, next) => {
 // роуты для пользователей и карточек
 app.use('/users', userRouter);
 app.use('/cards', cardRouter);
+app.use('*', (req, res) => res.status(Errors.NOT_FOUND).send({ message: 'Запрашиваемый ресурс не найден' }));
 
 async function init() {
   await mongoose.connect(MONGO_URL);

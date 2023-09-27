@@ -5,6 +5,8 @@ module.exports.createUser = (req, res) => {
   const { name, about, avatar } = req.body;
   User.create({ name, about, avatar })
     .then((user) => res.status(201).send({
+      // добавляем вывод id созданного пользователя согласно задания в тестах
+      id: user._id,
       name: user.name,
       about: user.about,
       avatar: user.avatar,
@@ -62,7 +64,7 @@ module.exports.updateUser = (req, res) => {
       if (error.message === 'NotFound') {
         return res.status(Errors.NOT_FOUND).send({ message: 'Пользователь с указанным _id не найден' });
       }
-      if (error.name === 'CastError') {
+      if (error.name === 'ValidationError') {
         return res.status(Errors.BAD_REQUEST).send({ message: 'Переданы некорректные данные при обновлении профиля' });
       }
       return res.status(Errors.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера' });
