@@ -1,97 +1,79 @@
+const { ValidationError, CastError } = require('mongoose').Error;
 const User = require('../models/user');
-const Errors = require('../utils/errors');
+const Statuses = require('../utils/statusCodes');
 
 module.exports.createUser = (req, res) => {
   const { name, about, avatar } = req.body;
   User.create({ name, about, avatar })
-    .then((user) => res.status(201).send({
-      // добавляем вывод id созданного пользователя согласно задания в тестах
-      _id: user._id, // property было просто id
+    .then((user) => res.status(Statuses.CREATED).send({
+      // добавляем вывод id созданного пользователя согласно заданию в тестах
+      _id: user._id,
       name: user.name,
       about: user.about,
       avatar: user.avatar,
     }))
     .catch((error) => {
-      if (error.name === 'ValidationError') {
+      if (error instanceof ValidationError) {
         // отправляем только message, без error, согласно чек-листу
-        return res.status(Errors.BAD_REQUEST).send({ message: 'Переданы некорректные данные при создании пользователя' });
+        return res.status(Statuses.BAD_REQUEST).send({ message: 'Переданы некорректные данные при создании пользователя' });
       }
-      return res.status(Errors.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера' });
+      return res.status(Statuses.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера' });
     });
 };
 
 module.exports.getUsers = (req, res) => {
   User.find({})
-    .then((users) => res.status(200).send(users))
-    .catch(() => res.status(Errors.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера' }));
+    .then((users) => res.status(Statuses.OK_REQUEST).send(users))
+    .catch(() => res.status(Statuses.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера' }));
 };
 
-// возвращаем всех пользователей по _id
+// возвращаем всех пользователей по id
 module.exports.getUserById = (req, res) => {
   // здесь req.params.userId вместо req.user._id, чтобы в запрос не попадал захардкоженный id
   User.findById(req.params.userId)
-    .then((user) => {
-      if (!user) {
-        throw new Error('NotFound');
-      }
-      return res.status(200).send(user);
-    })
+  // orFail заменяет if-проверку в блоке then и не возвращает null, если объект не найден
+    .orFail(new Error('NotFound'))
+    .then((user) => res.status(Statuses.OK_REQUEST).send(user))
     .catch((error) => {
       if (error.message === 'NotFound') {
-        return res.status(Errors.NOT_FOUND).send({ message: 'Пользователь по указанному _id не найден' });
+        return res.status(Statuses.NOT_FOUND).send({ message: 'Пользователь по указанному _id не найден' });
       }
-      if (error.name === 'CastError') {
-        return res.status(Errors.BAD_REQUEST).send({ message: 'Передан не валидный id' });
+      if (error instanceof CastError) {
+        return res.status(Statuses.BAD_REQUEST).send({ message: 'Передан не валидный id' });
       }
-      return res.status(Errors.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера' });
+      return res.status(Statuses.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера' });
     });
 };
 
-// обновляем данные пользователя
-module.exports.updateUser = (req, res) => {
-  const { name, about } = req.body;
-  User.findByIdAndUpdate(req.user._id, { name, about }, {
+// обновляем данные пользователя, 1) создаём одну общую логику для обновления данных пользователя:
+const updateUser = (req, res, updateData) => {
+  User.findByIdAndUpdate(req.user._id, updateData, {
     new: true,
     runValidators: true,
   })
-    .then((user) => {
-      if (!user) {
-        throw new Error('NotFound');
-      }
-      return res.status(200).send(user);
-    })
+    .orFail(new Error('NotFound'))
+    .then((user) => res.status(Statuses.OK_REQUEST).send(user))
     .catch((error) => {
       if (error.message === 'NotFound') {
-        return res.status(Errors.NOT_FOUND).send({ message: 'Пользователь с указанным _id не найден' });
+        return res.status(Statuses.NOT_FOUND).send({ message: 'Пользователь с указанным _id не найден' });
       }
-      if (error.name === 'ValidationError') {
-        return res.status(Errors.BAD_REQUEST).send({ message: 'Переданы некорректные данные при обновлении профиля' });
+      if (error instanceof ValidationError) {
+        return res.status(Statuses.BAD_REQUEST).send({ message: 'Переданы некорректные данные при обновлении данных профиля' });
       }
-      return res.status(Errors.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера' });
+      return res.status(Statuses.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера' });
     });
 };
 
-// обновляем аватар
+// 2) создаём 2 маленькие функции-декораторы, которые выполняют роль контроллеров
+// обновляем поля Имя и О себе
+module.exports.updateUserInfo = (req, res) => {
+  const { name, about } = req.body;
+  // вызываем функцию с общей логикой и передаём нужные для обновления аргументы
+  updateUser(req, res, { name, about });
+};
+
+// обновляем поле Аватар
 module.exports.updateAvatar = (req, res) => {
   const { avatar } = req.body;
-  User.findByIdAndUpdate(req.user._id, { avatar }, {
-    new: true,
-    runValidators: true,
-    upsert: true,
-  })
-    .then((user) => {
-      if (!user) {
-        throw new Error('NotFound');
-      }
-      return res.status(200).send(user);
-    })
-    .catch((error) => {
-      if (error.message === 'NotFound') {
-        return res.status(Errors.NOT_FOUND).send({ message: 'Пользователь с указанным _id не найден' });
-      }
-      if (error.message === 'ValidationError') {
-        return res.status(Errors.BAD_REQUEST).send({ message: 'Переданы некорректные данные при обновлении аватара' });
-      }
-      return res.status(Errors.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера' });
-    });
+  updateUser(req, res, { avatar });
 };
