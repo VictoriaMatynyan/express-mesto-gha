@@ -1,11 +1,12 @@
 const Card = require('../models/card');
+// используем переменную окружений
 const Errors = require('../utils/errors');
 
 module.exports.getCards = (req, res) => {
   Card.find({})
     .populate(['owner', 'likes'])
     .then((card) => res.send(card))
-    .catch((error) => res.status(Errors.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера', error }));
+    .catch(() => res.status(Errors.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера' }));
 };
 
 module.exports.createCard = (req, res) => {
@@ -15,9 +16,9 @@ module.exports.createCard = (req, res) => {
     .then((card) => res.status(201).send(card))
     .catch((error) => {
       if (error.name === 'ValidationError') {
-        return res.status(Errors.BAD_REQUEST).send({ message: 'Переданы некорректные данные при создании карточки', ...error });
+        return res.status(Errors.BAD_REQUEST).send({ message: 'Переданы некорректные данные при создании карточки' });
       }
-      return res.status(Errors.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера', error });
+      return res.status(Errors.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера' });
     });
 };
 
@@ -32,9 +33,12 @@ module.exports.deleteCard = (req, res) => {
     })
     .catch((error) => {
       if (error.message === 'NotFound') {
-        return res.status(Errors.BAD_REQUEST).send({ message: 'Карточка с указанным _id не найдена' });
+        return res.status(Errors.NOT_FOUND).send({ message: 'Передан несуществующий _id карточки' });
       }
-      return res.status(Errors.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера', error });
+      if (error.name === 'CastError') {
+        return res.status(Errors.BAD_REQUEST).send({ message: 'Передан некорректный _id карточки' });
+      }
+      return res.status(Errors.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера' });
     });
 };
 
@@ -59,7 +63,7 @@ module.exports.likeCard = (req, res) => {
       if (error.name === 'CastError') {
         return res.status(Errors.BAD_REQUEST).send({ message: 'Переданы некорректные данные для постановки лайка' });
       }
-      return res.status(Errors.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера', error });
+      return res.status(Errors.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера' });
     });
 };
 
@@ -83,6 +87,6 @@ module.exports.removeCardLike = (req, res) => {
       if (error.name === 'CastError') {
         return res.status(Errors.BAD_REQUEST).send({ message: 'Переданы некорректные данные для снятия лайка.' });
       }
-      return res.status(Errors.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера', error });
+      return res.status(Errors.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера' });
     });
 };

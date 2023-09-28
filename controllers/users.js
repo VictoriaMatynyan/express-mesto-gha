@@ -6,7 +6,7 @@ module.exports.createUser = (req, res) => {
   User.create({ name, about, avatar })
     .then((user) => res.status(201).send({
       // добавляем вывод id созданного пользователя согласно задания в тестах
-      id: user._id,
+      _id: user._id, // property было просто id
       name: user.name,
       about: user.about,
       avatar: user.avatar,
