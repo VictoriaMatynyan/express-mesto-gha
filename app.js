@@ -8,17 +8,17 @@ const { PORT = 3000, MONGO_URL = 'mongodb://127.0.0.1:27017/mestodb' } = process
 const app = express();
 app.use(express.json()); // вместо body parser
 
-// временное решение для хранения _id автора и обогащения мидлвэра getUserById
-app.use((req, res, next) => {
-  req.user = {
-    _id: '6511dcd38a271760b206f378',
-  };
-  next();
-});
-
 // подключаем корневой роут для пользователей и карточек
 app.use(router);
 app.use('*', (req, res) => res.status(Statuses.NOT_FOUND).send({ message: 'Запрашиваемый ресурс не найден' }));
+
+// создаём централизованный миддлвэр-обработчик ошибок
+app.use((err, req, res, next) => {
+  res.status(err.statusCode).send({
+    message: err.statusCode === Statuses.INTERNAL_SERVER_ERROR ? 'Ошибка на стороне сервера' : err.message,
+  });
+  next();
+});
 
 async function init() {
   await mongoose.connect(MONGO_URL);

@@ -1,18 +1,37 @@
 const { ValidationError, CastError } = require('mongoose').Error;
+const bcrypt = require('bcrypt');
 const User = require('../models/user');
+const generateToken = require('../utils/jwt');
+
+// имппорт ошибок и их кодов
+const NotFoundError = require('../errors/notFound');
+const BadRequestError = require('../errors/badRequest');
+const MongoDuplicateConflict = require('../errors/mongoDuplicate');
 const Statuses = require('../utils/statusCodes');
 
-module.exports.createUser = (req, res) => {
-  const { name, about, avatar } = req.body;
-  User.create({ name, about, avatar })
+const SAULT_ROUNDS = 10;
+
+module.exports.createUser = (req, res, next) => {
+  const {
+    name, about, avatar, email, password,
+  } = req.body;
+  // хешируем пароль
+  bcrypt.hash(password, SAULT_ROUNDS)
+    .then((hash) => User.create({
+      name, about, avatar, email, password: hash,
+    }))
     .then((user) => res.status(Statuses.CREATED).send({
       // добавляем вывод id созданного пользователя согласно заданию в тестах
       _id: user._id,
       name: user.name,
       about: user.about,
       avatar: user.avatar,
-    }))
+      email: user.email,
+    })) // пароля нет, потому что он нам в ответе не нужен
     .catch((error) => {
+      if (error.code === Statuses.MONGO_DUPLICATE) {
+        next(new MongoDuplicateConflict('Пользователь с таким email уже существует'));
+      }
       if (error instanceof ValidationError) {
         // отправляем только message, без error, согласно чек-листу
         return res.status(Statuses.BAD_REQUEST).send({ message: 'Переданы некорректные данные при создании пользователя' });
@@ -21,27 +40,46 @@ module.exports.createUser = (req, res) => {
     });
 };
 
-module.exports.getUsers = (req, res) => {
-  User.find({})
-    .then((users) => res.status(Statuses.OK_REQUEST).send(users))
-    .catch(() => res.status(Statuses.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера' }));
+module.exports.login = (req, res, next) => {
+  const { email, password } = req.body;
+  return User.findUserByCredentials(email, password)
+    .then((user) => {
+      const token = generateToken({ _id: user._id });
+      return res.send({ token });
+    })
+    .catch(next);
 };
 
-// возвращаем всех пользователей по id
-module.exports.getUserById = (req, res) => {
+module.exports.getUsers = (req, res, next) => {
+  User.find({})
+    .then((users) => res.status(Statuses.OK_REQUEST).send(users))
+    .catch(next);
+};
+
+module.exports.getUserById = (req, res, next) => {
   // здесь req.params.userId вместо req.user._id, чтобы в запрос не попадал захардкоженный id
   User.findById(req.params.userId)
   // orFail заменяет if-проверку в блоке then и не возвращает null, если объект не найден
-    .orFail(new Error('NotFound'))
+    .orFail(new NotFoundError('Пользователь по указанному _id не найден'))
     .then((user) => res.status(Statuses.OK_REQUEST).send(user))
     .catch((error) => {
-      if (error.message === 'NotFound') {
-        return res.status(Statuses.NOT_FOUND).send({ message: 'Пользователь по указанному _id не найден' });
-      }
       if (error instanceof CastError) {
-        return res.status(Statuses.BAD_REQUEST).send({ message: 'Передан не валидный id' });
+        next(new BadRequestError('Передан невалидный id'));
       }
-      return res.status(Statuses.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера' });
+      next(error);
+    });
+};
+
+module.exports.getCurrentUserInfo = (req, res, next) => {
+  // находим пользователя по его _id
+  User.findById(req.user._id)
+    .orFail(new NotFoundError('Пользователь с указанным _id не найден'))
+    .then((user) => res.status(Statuses.OK_REQUEST).send(user))
+    .catch((error) => {
+      if (error instanceof CastError) {
+        next(new BadRequestError('Пользователь не найден'));
+      }
+      next();
     });
 };
 
@@ -51,12 +89,9 @@ const updateUser = (req, res, updateData) => {
     new: true,
     runValidators: true,
   })
-    .orFail(new Error('NotFound'))
+    .orFail(new NotFoundError('Пользователь с указанным _id не найден'))
     .then((user) => res.status(Statuses.OK_REQUEST).send(user))
     .catch((error) => {
-      if (error.message === 'NotFound') {
-        return res.status(Statuses.NOT_FOUND).send({ message: 'Пользователь с указанным _id не найден' });
-      }
       if (error instanceof ValidationError) {
         return res.status(Statuses.BAD_REQUEST).send({ message: 'Переданы некорректные данные при обновлении данных профиля' });
       }
