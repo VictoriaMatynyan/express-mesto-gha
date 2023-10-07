@@ -1,19 +1,24 @@
 const jwt = require('jsonwebtoken');
 const UnauthorizedError = require('../errors/unauthorized');
 
+const {
+  JWT_SECRET = 'kHXPgoWXxD/l8GwEH7zc/e6aq3lbqPgV/PG2IA==ADsh4FpPLeKBK8J5fR6gHK9l',
+  NODE_ENV = 'development',
+} = process.env;
+
 module.exports = (req, res, next) => {
   let payload;
   try {
     // достаём авторизационный заголовок
-    const { authorization } = req.headers;
-    // убеждаемся, что он есть или начинается с Bearer
-    if (!authorization || !authorization.startsWith('Bearer ')) {
+    // const { authorization } = req.headers;
+
+    // достаём токен из объекта req.cookies
+    const token = req.cookies.jwt;
+    if (!token) {
       throw new UnauthorizedError('Неверные авторизационные данные');
     }
-    // извлекаем токен
-    const token = authorization.replace('Bearer ', '');
     // верифицируем токен
-    payload = jwt.verify(token, 'secret-key');
+    payload = jwt.verify(token, NODE_ENV ? JWT_SECRET : 'secret-key');
     // расширяем объект пользователя - записываем в него payload
   } catch (error) {
     // если что-то не так, возвращаем 401 ошибку
@@ -22,25 +27,3 @@ module.exports = (req, res, next) => {
   req.user = payload;
   next();
 };
-
-// module.exports.auth = (req, res, next) => {
-//   // достаём авторизационный заголовок
-//   const { authorization } = req.headers;
-//   // убеждаемся, что он есть или начинается с Bearer
-//   if (!authorization || !authorization.startsWith('Bearer ')) {
-//     throw new UnauthorizedError('Неверные авторизационные данные');
-//   }
-//   // извлекаем токен
-//   const getToken = authorization.replace('Bearer ', '');
-//   let payload;
-//   try {
-//     // верифицируем токен
-//     payload = jwt.verify(getToken, 'secret-key');
-//     // расширяем объект пользователя - записываем в него payload
-//   } catch (error) {
-//     // если что-то не так, возвращаем 401 ошибку
-//     next(new UnauthorizedError('Неверные авторизационные данные'));
-//   }
-//   req.user = payload;
-//   next();
-// };

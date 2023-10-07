@@ -8,8 +8,10 @@ const auth = require('../middlewares/auth');
 router.use('/', authRouter);
 
 // защищаем роуты авторизацией
-// (не забыть передать токен в заголовке Authorization в Postman!)
 router.use('/users', auth, userRouter);
 router.use('/cards', auth, cardRouter);
 
 module.exports = router;
+
+// P.S. не забыть передать токен в заголовке Authorization в Postman!
+// P.S.S. после сохранения токена в req.cookies, можно ничего не передавать в заголовок

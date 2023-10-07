@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const isEmail = require('validator/lib/isEmail');
 const isURL = require('validator/lib/isURL');
+const UnauthorizedError = require('../errors/unauthorized');
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -42,7 +43,6 @@ const userSchema = new mongoose.Schema({
       value: true,
       message: 'Это поле обязательно для заполнения',
     },
-    minlength: [8, 'Минимальная длина пароля - 8 символов'],
     select: false, // запрещаем возврат хэша пароля из API
   },
 });
@@ -53,12 +53,12 @@ userSchema.statics.findUserByCredentials = function findOneFunc(email, password)
   return this.findOne({ email }).select('+password') // this - это модель User
     .then((user) => {
       if (!user) {
-        return Promise.reject(new Error('Неправильные почта или пароль'));
+        return Promise.reject(new UnauthorizedError('Неправильные почта или пароль'));
       }
       return bcrypt.compare(password, user.password)
         .then((matched) => {
           if (!matched) {
-            return Promise.reject(new Error('Неправильные почта или пароль'));
+            return Promise.reject(new UnauthorizedError('Неправильные почта или пароль'));
           }
           return user;
         });
@@ -66,7 +66,3 @@ userSchema.statics.findUserByCredentials = function findOneFunc(email, password)
 };
 
 module.exports = mongoose.model('user', userSchema);
-
-// regEx для url было:
-// /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}
-// \b([-a-zA-Z0-9()@:%_+.~#?&//=]*)$/.test(v)

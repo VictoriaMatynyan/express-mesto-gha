@@ -31,12 +31,11 @@ module.exports.createUser = (req, res, next) => {
     .catch((error) => {
       if (error.code === Statuses.MONGO_DUPLICATE) {
         next(new MongoDuplicateConflict('Пользователь с таким email уже существует'));
-      }
-      if (error instanceof ValidationError) {
+      } else if (error instanceof ValidationError) {
         // отправляем только message, без error, согласно чек-листу
-        return res.status(Statuses.BAD_REQUEST).send({ message: 'Переданы некорректные данные при создании пользователя' });
+        next(new BadRequestError('Переданы некорректные данные при создании пользователя'));
       }
-      return res.status(Statuses.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера' });
+      next(error);
     });
 };
 
@@ -45,6 +44,12 @@ module.exports.login = (req, res, next) => {
   return User.findUserByCredentials(email, password)
     .then((user) => {
       const token = generateToken({ _id: user._id });
+      res.cookie('jwt', token, {
+        maxAge: 3600000,
+        httpOnly: true,
+        sameSite: true,
+        secure: true,
+      });
       return res.send({ token });
     })
     .catch(next);
@@ -79,12 +84,12 @@ module.exports.getCurrentUserInfo = (req, res, next) => {
       if (error instanceof CastError) {
         next(new BadRequestError('Пользователь не найден'));
       }
-      next();
+      next(error);
     });
 };
 
 // обновляем данные пользователя, 1) создаём одну общую логику для обновления данных пользователя:
-const updateUser = (req, res, updateData) => {
+const updateUser = (req, res, updateData, next) => {
   User.findByIdAndUpdate(req.user._id, updateData, {
     new: true,
     runValidators: true,
@@ -93,9 +98,9 @@ const updateUser = (req, res, updateData) => {
     .then((user) => res.status(Statuses.OK_REQUEST).send(user))
     .catch((error) => {
       if (error instanceof ValidationError) {
-        return res.status(Statuses.BAD_REQUEST).send({ message: 'Переданы некорректные данные при обновлении данных профиля' });
+        next(new BadRequestError('Переданы некорректные данные при обновлении данных профиля'));
       }
-      return res.status(Statuses.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера' });
+      next(error);
     });
 };
 
