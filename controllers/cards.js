@@ -1,40 +1,47 @@
 const { ValidationError, CastError } = require('mongoose').Error;
 const Card = require('../models/card');
-// используем переменную окружений
+
+// имппорт ошибок и их кодов
+const BadRequestError = require('../errors/badRequest');
+const NotFoundError = require('../errors/notFound');
+const ForbiddenError = require('../errors/forbiddenError');
 const Statuses = require('../utils/statusCodes');
 
-module.exports.getCards = (req, res) => {
+module.exports.getCards = (req, res, next) => {
   Card.find({})
     .populate(['owner', 'likes'])
-    .then((card) => res.send(card))
-    .catch(() => res.status(Statuses.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера' }));
+    .then((cards) => res.send(cards))
+    .catch(next);
 };
 
-module.exports.createCard = (req, res) => {
+module.exports.createCard = (req, res, next) => {
   const { name, link } = req.body;
   const owner = req.user._id;
   Card.create({ name, link, owner })
     .then((card) => res.status(Statuses.CREATED).send(card))
     .catch((error) => {
       if (error instanceof ValidationError) {
-        return res.status(Statuses.BAD_REQUEST).send({ message: 'Переданы некорректные данные при создании карточки' });
+        next(new BadRequestError('Переданы некорректные данные при создании карточки'));
       }
-      return res.status(Statuses.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера' });
+      next(error);
     });
 };
 
-module.exports.deleteCard = (req, res) => {
+module.exports.deleteCard = (req, res, next) => {
   const { cardId } = req.params;
-  Card.findByIdAndDelete(cardId).orFail(new Error('NotFound'))
-    .then((card) => res.status(Statuses.OK_REQUEST).send(card))
+  Card.findById(cardId).orFail(new NotFoundError('Передан несуществующий _id карточки'))
+    .then((card) => {
+      if (card.owner.toString() !== req.user._id) {
+        throw new ForbiddenError('Разрешено удалять только свои карточки');
+      }
+      return Card.findByIdAndDelete(cardId);
+    })
+    .then((deletedCard) => res.status(Statuses.OK_REQUEST).send(deletedCard))
     .catch((error) => {
-      if (error.message === 'NotFound') {
-        return res.status(Statuses.NOT_FOUND).send({ message: 'Передан несуществующий _id карточки' });
-      }
       if (error instanceof CastError) {
-        return res.status(Statuses.BAD_REQUEST).send({ message: 'Передан некорректный _id карточки' });
+        next(new BadRequestError('Передан некорректный _id карточки'));
       }
-      return res.status(Statuses.SERVER_ERROR).send({ message: 'Ошибка на стороне сервера' });
+      next(error);
     });
 };
 
