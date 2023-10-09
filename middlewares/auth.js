@@ -12,7 +12,7 @@ module.exports = (req, res, next) => {
     // достаём cookies
     const { cookies } = req;
 
-    if (!(authorization && authorization.startsWith('Bearer ')) || !(cookies && cookies.jwt)) {
+    if (!(authorization && authorization.startsWith('Bearer ')) && !(cookies && cookies.jwt)) {
       throw new UnauthorizedError('В req.cookies ничего нет'); // Неверные авторизационные данные
     }
 
