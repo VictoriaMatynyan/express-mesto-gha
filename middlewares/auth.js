@@ -10,20 +10,18 @@ module.exports = (req, res, next) => {
   let payload;
   try {
     // достаём авторизационный заголовок
-    const { authorization } = req.headers;
+    // const { authorization } = req.headers;
 
     // достаём токен из объекта req.cookies
-    // const token = req.cookies.jwt;
-    if (!authorization || !authorization.startsWith('Bearer')) {
+    const token = req.cookies.jwt;
+    if (!token) {
       throw new UnauthorizedError('В req.cookies ничего нет'); // Неверные авторизационные данные
     }
-    const token = authorization.replace('Bearer ', '');
     // верифицируем токен
-    payload = jwt.verify(validToken, NODE_ENV ? JWT_SECRET : 'secret-key');
+    payload = jwt.verify(token, NODE_ENV ? JWT_SECRET : 'secret-key');
     // расширяем объект пользователя - записываем в него payload
   } catch (error) {
     // если что-то не так, возвращаем 401 ошибку
-    next(new UnauthorizedError('Что-то не так с токеном')); // Неверные авторизационные данные
     next(new UnauthorizedError('Что-то не так с токеном')); // Неверные авторизационные данные
   }
   req.user = payload;
