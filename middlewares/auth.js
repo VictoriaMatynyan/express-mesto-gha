@@ -19,10 +19,11 @@ module.exports = (req, res, next) => {
     }
     const token = authorization.replace('Bearer ', '');
     // верифицируем токен
-    payload = jwt.verify(token, NODE_ENV ? JWT_SECRET : 'secret-key');
+    payload = jwt.verify(validToken, NODE_ENV ? JWT_SECRET : 'secret-key');
     // расширяем объект пользователя - записываем в него payload
   } catch (error) {
     // если что-то не так, возвращаем 401 ошибку
+    next(new UnauthorizedError('Что-то не так с токеном')); // Неверные авторизационные данные
     next(new UnauthorizedError('Что-то не так с токеном')); // Неверные авторизационные данные
   }
   req.user = payload;
