@@ -7,13 +7,18 @@ module.exports = (req, res, next) => {
   let payload;
   try {
     // достаём авторизационный заголовок
-    // const { authorization } = req.headers;
+    const { authorization } = req.headers;
 
-    // достаём токен из объекта req.cookies
-    const token = req.cookies.jwt;
-    if (!token) {
+    // достаём cookies
+    const { cookies } = req;
+
+    if (!(authorization && authorization.startsWith('Bearer ')) || !(cookies && cookies.jwt)) {
       throw new UnauthorizedError('В req.cookies ничего нет'); // Неверные авторизационные данные
     }
+
+    // извлечем токен или из заголовка, или из куки
+    const token = authorization ? authorization.replace('Bearer ', '') : cookies.jwt;
+
     // верифицируем токен
     // явно указываем условие NODE_ENV === 'production', чтобы выбрать правильный секретный ключ
     payload = jwt.verify(token, NODE_ENV === 'production' ? JWT_SECRET : 'secret-key');
@@ -25,3 +30,6 @@ module.exports = (req, res, next) => {
   req.user = payload;
   next();
 };
+
+// достаём токен из объекта req.cookies
+// const token = req.cookies.jwt; - не пропускают автотесты
