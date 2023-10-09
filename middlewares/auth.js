@@ -15,14 +15,15 @@ module.exports = (req, res, next) => {
     // достаём токен из объекта req.cookies
     const token = req.cookies.jwt;
     if (!token) {
-      throw new UnauthorizedError('Неверные авторизационные данные');
+      throw new UnauthorizedError('В req.cookies ничего нет'); // Неверные авторизационные данные
     }
+    const validToken = token.replace('Bearer ', '');
     // верифицируем токен
-    payload = jwt.verify(token, NODE_ENV ? JWT_SECRET : 'secret-key');
+    payload = jwt.verify(validToken, NODE_ENV ? JWT_SECRET : 'secret-key');
     // расширяем объект пользователя - записываем в него payload
   } catch (error) {
     // если что-то не так, возвращаем 401 ошибку
-    next(new UnauthorizedError('Неверные авторизационные данные'));
+    next(new UnauthorizedError('Что-то не так с токеном')); // Неверные авторизационные данные
   }
   req.user = payload;
   next();
