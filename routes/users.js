@@ -14,7 +14,7 @@ userRouter.get(
   celebrate({
   // валидируем параметры запроса
     params: Joi.object().keys({
-      userId: Joi.string().alphanum().required(),
+      userId: Joi.string().regex(/^[0-9a-fA-F]{24}$/).required(),
     }),
   }),
   getUserById,

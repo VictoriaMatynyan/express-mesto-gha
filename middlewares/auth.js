@@ -8,27 +8,25 @@ module.exports = (req, res, next) => {
   try {
     // достаём авторизационный заголовок
     const { authorization } = req.headers;
-
     // достаём cookies
     const { cookies } = req;
-
-    if (!(authorization && authorization.startsWith('Bearer ')) && !(cookies && cookies.jwt)) {
-      throw new UnauthorizedError('В req.cookies ничего нет'); // Неверные авторизационные данные
-    }
-
+    // автотесты не пропускают куки, добавляем доп.проверку
+    if ((authorization && authorization.startsWith('Bearer ')) || (cookies && cookies.jwt)) {
     // извлечем токен или из заголовка, или из куки
-    const token = authorization ? authorization.replace('Bearer ', '') : cookies.jwt;
-
-    // верифицируем токен
-    // явно указываем условие NODE_ENV === 'production', чтобы выбрать правильный секретный ключ
-    payload = jwt.verify(token, NODE_ENV === 'production' ? JWT_SECRET : 'secret-key');
-    // расширяем объект пользователя - записываем в него payload
+      const token = authorization ? authorization.replace('Bearer ', '') : cookies.jwt;
+      // верифицируем токен
+      // явно указываем условие NODE_ENV === 'production', чтобы выбрать правильный секретный ключ
+      payload = jwt.verify(token, NODE_ENV === 'production' ? JWT_SECRET : 'secret-key');
+      // расширяем объект пользователя - записываем в него payload
+      req.user = payload;
+      next();
+    } else {
+      next(new UnauthorizedError('Неверные авторизационные данные'));
+    }
   } catch (error) {
     // если что-то не так, возвращаем 401 ошибку
-    next(new UnauthorizedError('Что-то не так с токеном')); // Неверные авторизационные данные
+    next(new UnauthorizedError('Неверные авторизационные данные'));
   }
-  req.user = payload;
-  next();
 };
 
 // достаём токен из объекта req.cookies

@@ -62,7 +62,6 @@ module.exports.getUsers = (req, res, next) => {
 };
 
 module.exports.getUserById = (req, res, next) => {
-  // здесь req.params.userId вместо req.user._id, чтобы в запрос не попадал захардкоженный id
   User.findById(req.params.userId)
   // orFail заменяет if-проверку в блоке then и не возвращает null, если объект не найден
     .orFail(new NotFoundError('Пользователь по указанному _id не найден'))
