@@ -1,46 +1,16 @@
 const userRouter = require('express').Router();
-const { celebrate, Joi } = require('celebrate');
+
+const { usersIdValidation, userInfoValidation, userAvatarValidation } = require('../middlewares/celebrateValidation');
 const {
-  getUsers, getUserById, updateUserInfo, updateAvatar, getCurrentUserInfo,
+  getUsers, getUser, updateUserInfo, updateAvatar, getCurrentUserInfo,
 } = require('../controllers/users');
 
 userRouter.get('/', getUsers);
 // здесь важен порядок: роут /me должен быть перед /:userId, иначе возникает ошибка CastError:
 // Express принимает роут /me за роут /:userid, и принимает "me" за id
 userRouter.get('/me', getCurrentUserInfo);
-
-userRouter.get(
-  '/:userId',
-  celebrate({
-  // валидируем параметры запроса
-    params: Joi.object().keys({
-      userId: Joi.string().regex(/^[0-9a-fA-F]{24}$/).required(),
-    }),
-  }),
-  getUserById,
-);
-
-userRouter.patch(
-  '/me',
-  celebrate({
-    // валидируем тело запроса
-    body: Joi.object().keys({
-      name: Joi.string().min(2).max(30),
-      about: Joi.string().min(2).max(30),
-    }),
-  }),
-  updateUserInfo,
-);
-
-userRouter.patch(
-  '/me/avatar',
-  celebrate({
-    // валидируем тело запроса
-    body: Joi.object().keys({
-      avatar: Joi.string().regex(/^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)$/),
-    }),
-  }),
-  updateAvatar,
-);
+userRouter.get('/:userId', usersIdValidation, getUser);
+userRouter.patch('/me', userInfoValidation, updateUserInfo);
+userRouter.patch('/me/avatar', userAvatarValidation, updateAvatar);
 
 module.exports = userRouter;

@@ -1,4 +1,4 @@
-const { ValidationError, CastError } = require('mongoose').Error;
+const { ValidationError } = require('mongoose').Error;
 const bcrypt = require('bcrypt');
 const User = require('../models/user');
 const generateToken = require('../utils/jwt');
@@ -34,8 +34,9 @@ module.exports.createUser = (req, res, next) => {
       } else if (error instanceof ValidationError) {
         // отправляем только message, без error, согласно чек-листу
         next(new BadRequestError('Переданы некорректные данные при создании пользователя'));
+      } else {
+        next(error);
       }
-      next(error);
     });
 };
 
@@ -61,30 +62,27 @@ module.exports.getUsers = (req, res, next) => {
     .catch(next);
 };
 
-module.exports.getUserById = (req, res, next) => {
-  User.findById(req.params.userId)
+// создаём общую логику для поиска пользователя по ID
+const getUserById = (req, res, userData, next) => {
+  User.findById(userData)
   // orFail заменяет if-проверку в блоке then и не возвращает null, если объект не найден
     .orFail(new NotFoundError('Пользователь по указанному _id не найден'))
     .then((user) => res.status(Statuses.OK_REQUEST).send(user))
     .catch((error) => {
-      if (error instanceof CastError) {
-        next(new BadRequestError('Передан невалидный id'));
-      }
       next(error);
     });
 };
 
+// функции-декораторы для поиска пользователя по ID
+module.exports.getUser = (req, res, next) => {
+  const userData = req.params.userId;
+  getUserById(req, res, userData, next);
+};
+
 module.exports.getCurrentUserInfo = (req, res, next) => {
   // находим пользователя по его _id
-  User.findById(req.user._id)
-    .orFail(new NotFoundError('Пользователь с указанным _id не найден'))
-    .then((user) => res.status(Statuses.OK_REQUEST).send(user))
-    .catch((error) => {
-      if (error instanceof CastError) {
-        next(new BadRequestError('Пользователь не найден'));
-      }
-      next(error);
-    });
+  const userData = req.user._id;
+  getUserById(req, res, userData, next);
 };
 
 // обновляем данные пользователя, 1) создаём одну общую логику для обновления данных пользователя:
@@ -116,3 +114,27 @@ module.exports.updateAvatar = (req, res) => {
   const { avatar } = req.body;
   updateUser(req, res, { avatar });
 };
+
+// старые методы поиска пользователя по ID
+// module.exports.getUserById = (req, res, next) => {
+//   User.findById(req.params.userId)
+//   // orFail заменяет if-проверку в блоке then и не возвращает null, если объект не найден
+//     .orFail(new NotFoundError('Пользователь по указанному _id не найден'))
+//     .then((user) => res.status(Statuses.OK_REQUEST).send(user))
+//     .catch((error) => {
+//       if (error instanceof CastError) {
+//         next(new BadRequestError('Передан невалидный id'));
+//       } else {
+//         next(error);
+//       }
+//     });
+// };
+// module.exports.getCurrentUserInfo = (req, res, next) => {
+//   // находим пользователя по его _id
+//   User.findById(req.user._id)
+//     .orFail(new NotFoundError('Пользователь с указанным _id не найден'))
+//     .then((user) => res.status(Statuses.OK_REQUEST).send(user))
+//     .catch((error) => {
+//       next(error); // ошибки CastError в этом контроллере быть не может:
+//     }); // благодаря аутентификации можно гарантировать, что ID пользователя валидный.
+// };
