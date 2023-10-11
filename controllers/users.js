@@ -96,8 +96,9 @@ const updateUser = (req, res, updateData, next) => {
     .catch((error) => {
       if (error instanceof ValidationError) {
         next(new BadRequestError('Переданы некорректные данные при обновлении данных профиля'));
+      } else {
+        next(error);
       }
-      next(error);
     });
 };
 

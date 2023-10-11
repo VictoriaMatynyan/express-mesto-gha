@@ -27,20 +27,3 @@ module.exports = (req, res, next) => {
     next(new UnauthorizedError('Неверные авторизационные данные'));
   }
 };
-
-// отправка токена через куки (это более правильный вариант, но автотесты GH его не пропускают)
-// module.exports = (req, res, next) => {
-//   let payload;
-//   try {
-//     достаём cookies
-//     const { cookies } = req;
-//     if (cookies && cookies.jwt) {
-//       const token = cookies.jwt;
-//       payload = jwt.verify(token, NODE_ENV === 'production' ? JWT_SECRET : 'secret-key');
-//       req.user = payload;
-//       next();
-//     }
-//   } catch (error) {
-//     next(new UnauthorizedError('Что-то не так с токеном')); // Неверные авторизационные данные
-//   }
-// };
