@@ -48,12 +48,11 @@ module.exports.deleteCard = (req, res, next) => {
     });
 };
 
-module.exports.likeCard = (req, res, next) => {
-  const { cardId } = req.params;
+// общая логика для установки и удаления лайков
+const toggleCardLikes = (req, res, likesData, next) => {
   Card.findByIdAndUpdate(
-    cardId,
-    // добавляем пользователя в массив, только если его там нет - $addToSet
-    { $addToSet: { likes: req.user._id } },
+    req.params.cardId,
+    likesData,
     { new: true },
   )
     .orFail(new NotFoundError('Передан несуществующий _id карточки'))
@@ -67,20 +66,13 @@ module.exports.likeCard = (req, res, next) => {
     });
 };
 
+// 2 функции-декораторы для постановки и удаления лайков
+module.exports.likeCard = (req, res, next) => {
+  const likesData = { $addToSet: { likes: req.user._id } };
+  toggleCardLikes(req, res, likesData, next);
+};
+
 module.exports.removeCardLike = (req, res, next) => {
-  Card.findByIdAndUpdate(
-    req.params.cardId,
-    // удаляем пользователя из массива
-    { $pull: { likes: req.user._id } },
-    { new: true },
-  )
-    .orFail(new NotFoundError('Передан несуществующий _id карточки'))
-    .then((card) => res.status(Statuses.OK_REQUEST).send(card))
-    .catch((error) => {
-      if (error instanceof CastError) {
-        next(new BadRequestError('Переданы некорректные данные для снятия лайка.'));
-      } else {
-        next(error);
-      }
-    });
+  const likesData = { $pull: { likes: req.user._id } };
+  toggleCardLikes(req, res, likesData, next);
 };
